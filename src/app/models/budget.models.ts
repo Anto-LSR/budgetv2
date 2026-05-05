@@ -67,4 +67,12 @@ export interface SharedExpense {
   splitBetween: string[]; // UIDs des membres concernés
   date: any;
   createdAt: any;
+  addToPersonalExpenses?: boolean;
+  personalCategoryId?: string;
+}
+
+export interface Settlement {
+  from: string;
+  to: string;
+  amount: number;
 }

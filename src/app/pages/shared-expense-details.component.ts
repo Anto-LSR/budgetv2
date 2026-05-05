@@ -5,7 +5,7 @@ import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { SharedBudgetService } from '../services/shared-budget.service';
 import { AuthService } from '../services/auth.service';
 import { Observable, switchMap, of, combineLatest, map, take, tap } from 'rxjs';
-import { SharedGroup, SharedExpense, UserProfile } from '../models/budget.models';
+import { SharedGroup, SharedExpense, UserProfile, Settlement } from '../models/budget.models';
 import { FormsModule } from '@angular/forms';
 
 import { NavigationComponent } from '../components/navigation.component';
@@ -45,16 +45,43 @@ import { LoaderComponent } from '../components/loader.component';
         <!-- Balance Section -->
         <section>
           <h2 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 px-1">Équilibre</h2>
-          <div class="bg-white rounded-[32px] border border-slate-100 shadow-sm p-6 space-y-4">
-            <div *ngFor="let memberId of data.group.members" class="flex items-center justify-between">
-              <div class="flex items-center gap-3">
-                <div class="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-500 font-bold">
-                  {{ (data.memberNames[memberId] || '?')[0].toUpperCase() }}
+
+          <div class="bg-white rounded-[32px] border border-slate-100 shadow-sm p-6 space-y-6">
+            <!-- Individual Balances -->
+            <div class="space-y-4 pb-6 border-b border-slate-50">
+              <div *ngFor="let memberId of data.group.members" class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-500 font-bold">
+                    {{ (data.memberNames[memberId] || '?')[0].toUpperCase() }}
+                  </div>
+                  <span class="font-bold text-slate-700">{{ data.memberNames[memberId] || 'Utilisateur' }}</span>
                 </div>
-                <span class="font-bold text-slate-700">{{ data.memberNames[memberId] || 'Utilisateur' }}</span>
+                <div [class]="data.balances[memberId] >= -0.01 ? 'text-emerald-600' : 'text-red-500'" class="font-black text-right">
+                  <div class="text-xs uppercase opacity-50 font-bold mb-0.5">
+                    {{ data.balances[memberId] >= -0.01 ? 'à recevoir' : 'à payer' }}
+                  </div>
+                  {{ data.balances[memberId] > 0.01 ? '+' : '' }}{{ data.balances[memberId] | number:'1.2-2' }} €
+                </div>
               </div>
-              <div [class]="data.balances[memberId] >= 0 ? 'text-emerald-600' : 'text-red-500'" class="font-black">
-                {{ data.balances[memberId] > 0 ? '+' : '' }}{{ data.balances[memberId] | number:'1.2-2' }} €
+            </div>
+
+            <!-- Settlements (Who owes what) -->
+            <div class="space-y-4">
+              <h3 class="text-[10px] font-bold text-indigo-400 uppercase tracking-widest px-1">Remboursements à faire</h3>
+
+              <div *ngIf="data.settlements.length === 0" class="text-center py-4 text-slate-400 text-sm italic">
+                Tout est équilibré ! ✨
+              </div>
+
+              <div *ngFor="let settlement of data.settlements" class="bg-slate-50 rounded-2xl p-4 flex items-center justify-between">
+                <div class="flex items-center gap-2 flex-1">
+                  <span class="font-bold text-slate-900 text-sm">{{ data.memberNames[settlement.from] }}</span>
+                  <div class="flex-1 border-t border-dashed border-slate-300 mx-2 mt-1"></div>
+                  <span class="font-bold text-slate-900 text-sm">{{ data.memberNames[settlement.to] }}</span>
+                </div>
+                <div class="ml-4 bg-white px-3 py-1.5 rounded-xl shadow-sm border border-slate-100">
+                  <span class="font-black text-indigo-600 text-sm">{{ settlement.amount | number:'1.2-2' }} €</span>
+                </div>
               </div>
             </div>
           </div>
@@ -120,6 +147,7 @@ export class SharedExpenseDetailsComponent {
     group: SharedGroup,
     expenses: SharedExpense[],
     balances: { [key: string]: number },
+    settlements: Settlement[],
     memberNames: { [key: string]: string }
   }>;
 
@@ -165,10 +193,12 @@ export class SharedExpenseDetailsComponent {
               }
             });
 
+            const balances = this.sharedService.calculateBalance(group.members, expenses);
             return {
               group,
               expenses,
-              balances: this.sharedService.calculateBalance(group.members, expenses),
+              balances,
+              settlements: this.sharedService.calculateSettlements(balances),
               memberNames
             };
           })

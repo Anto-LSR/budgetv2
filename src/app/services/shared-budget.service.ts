@@ -2,7 +2,8 @@ import { Injectable, inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { Firestore, collection, collectionData, addDoc, query, where, doc, deleteDoc, orderBy, Timestamp, getDoc, updateDoc, arrayUnion } from '@angular/fire/firestore';
 import { Observable, of, from, switchMap, map, combineLatest } from 'rxjs';
-import { SharedGroup, SharedExpense, UserProfile } from '../models/budget.models';
+import { SharedGroup, SharedExpense, UserProfile, Settlement } from '../models/budget.models';
+import { BudgetService } from './budget.service';
 
 @Injectable({
   providedIn: 'root'
@@ -10,6 +11,7 @@ import { SharedGroup, SharedExpense, UserProfile } from '../models/budget.models
 export class SharedBudgetService {
   private firestore = inject(Firestore);
   private platformId = inject(PLATFORM_ID);
+  private budgetService = inject(BudgetService);
 
   // Groupes
   getGroups(userId: string): Observable<SharedGroup[]> {
@@ -59,9 +61,25 @@ export class SharedBudgetService {
     return collectionData(q, { idField: 'id' }) as Observable<SharedExpense[]>;
   }
 
-  addSharedExpense(expense: SharedExpense): Promise<any> {
+  async addSharedExpense(expense: SharedExpense): Promise<any> {
     if (!isPlatformBrowser(this.platformId)) return Promise.resolve();
     const expensesRef = collection(this.firestore, 'sharedExpenses');
+
+    // Si l'option est cochée et qu'une catégorie est sélectionnée, on ajoute aussi aux dépenses personnelles
+    if (expense.addToPersonalExpenses && expense.personalCategoryId) {
+      await this.budgetService.addExpense({
+        amount: expense.amount,
+        description: `[Partagé] ${expense.title}`,
+        date: expense.date,
+        categoryId: expense.personalCategoryId,
+        userId: expense.paidBy,
+        type: 'expense'
+      });
+    }
+
+    // On retire les champs temporaires avant de sauvegarder dans Firestore si on veut garder la base propre
+    // ou on les laisse si on veut garder une trace. Ici on va les laisser pour la cohérence de l'interface SharedExpense.
+
     return addDoc(expensesRef, {
       ...expense,
       date: Timestamp.fromDate(new Date(expense.date)),
@@ -107,5 +125,46 @@ export class SharedBudgetService {
     });
 
     return balance;
+  }
+
+  calculateSettlements(balances: { [key: string]: number }): Settlement[] {
+    const settlements: Settlement[] = [];
+    const debtors = Object.keys(balances)
+      .filter(id => balances[id] < -0.01)
+      .sort((a, b) => balances[a] - balances[b]);
+    const creditors = Object.keys(balances)
+      .filter(id => balances[id] > 0.01)
+      .sort((a, b) => balances[b] - balances[a]);
+
+    let d = 0;
+    let c = 0;
+
+    const currentBalances = { ...balances };
+
+    while (d < debtors.length && c < creditors.length) {
+      const debtorId = debtors[d];
+      const creditorId = creditors[c];
+
+      const debtAmount = Math.abs(currentBalances[debtorId]);
+      const creditAmount = currentBalances[creditorId];
+
+      const settlementAmount = Math.min(debtAmount, creditAmount);
+
+      if (settlementAmount > 0.01) {
+        settlements.push({
+          from: debtorId,
+          to: creditorId,
+          amount: settlementAmount
+        });
+      }
+
+      currentBalances[debtorId] += settlementAmount;
+      currentBalances[creditorId] -= settlementAmount;
+
+      if (Math.abs(currentBalances[debtorId]) < 0.01) d++;
+      if (Math.abs(currentBalances[creditorId]) < 0.01) c++;
+    }
+
+    return settlements;
   }
 }

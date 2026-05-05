@@ -4,8 +4,9 @@ import { LucideAngularModule, ChevronLeft, Save, Check } from 'lucide-angular';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { SharedBudgetService } from '../services/shared-budget.service';
 import { AuthService } from '../services/auth.service';
+import { BudgetService } from '../services/budget.service';
 import { Observable, switchMap, of, combineLatest, map, take } from 'rxjs';
-import { SharedGroup, SharedExpense, UserProfile } from '../models/budget.models';
+import { SharedGroup, SharedExpense, UserProfile, Category } from '../models/budget.models';
 import { FormsModule } from '@angular/forms';
 import { LoaderComponent } from '../components/loader.component';
 
@@ -94,6 +95,52 @@ import { LoaderComponent } from '../components/loader.component';
           </div>
         </div>
 
+        <!-- Personal Expense Option -->
+        <div *ngIf="data.currentUser && expense.paidBy === data.currentUser.uid" class="space-y-4">
+          <div
+            (click)="expense.addToPersonalExpenses = !expense.addToPersonalExpenses"
+            class="bg-white rounded-[32px] p-6 border border-slate-100 shadow-sm flex items-center justify-between active:bg-slate-50 transition-colors"
+          >
+            <div class="flex items-center gap-4">
+              <div class="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600">
+                <lucide-icon [name]="CheckIcon" class="w-6 h-6"></lucide-icon>
+              </div>
+              <div>
+                <h3 class="font-bold text-slate-900">Ajouter à mes frais</h3>
+                <p class="text-xs text-slate-400">Inclure dans mon budget du mois</p>
+              </div>
+            </div>
+            <div
+              [class]="expense.addToPersonalExpenses ? 'bg-indigo-600 border-indigo-600' : 'bg-white border-slate-200'"
+              class="w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all"
+            >
+              <lucide-icon *ngIf="expense.addToPersonalExpenses" [name]="CheckIcon" class="w-4 h-4 text-white"></lucide-icon>
+            </div>
+          </div>
+
+          <!-- Category Selection (only if addToPersonalExpenses is true) -->
+          <div *ngIf="expense.addToPersonalExpenses" class="bg-white rounded-[32px] p-6 border border-slate-100 shadow-sm animate-in slide-in-from-bottom-2">
+            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 block px-1">Choisir une catégorie</label>
+            <div class="grid grid-cols-4 gap-4">
+              <button
+                *ngFor="let cat of data.categories"
+                (click)="expense.personalCategoryId = cat.id"
+                [class]="expense.personalCategoryId === cat.id ? 'bg-indigo-600 text-white' : 'bg-slate-50 text-slate-600'"
+                class="flex flex-col items-center gap-2 p-3 rounded-2xl transition-all active:scale-95"
+              >
+                <div
+                  class="w-10 h-10 rounded-xl flex items-center justify-center text-lg shadow-sm"
+                  [style.backgroundColor]="expense.personalCategoryId === cat.id ? 'rgba(255,255,255,0.2)' : cat.color"
+                >
+                  <span *ngIf="!expense.personalCategoryId || expense.personalCategoryId !== cat.id" class="text-white">{{ cat.name.substring(0, 1) }}</span>
+                  <lucide-icon *ngIf="expense.personalCategoryId === cat.id" [name]="CheckIcon" class="w-5 h-5 text-white"></lucide-icon>
+                </div>
+                <span class="text-[10px] font-bold truncate w-full text-center">{{ cat.name }}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
         <button
           (click)="saveExpense(data.group.id!)"
           [disabled]="!isFormValid()"
@@ -113,11 +160,14 @@ export class AddSharedExpenseComponent {
   private route = inject(ActivatedRoute);
   private sharedService = inject(SharedBudgetService);
   private authService = inject(AuthService);
+  private budgetService = inject(BudgetService);
   private router = inject(Router);
 
   data$: Observable<{
     group: SharedGroup,
-    memberNames: { [key: string]: string }
+    memberNames: { [key: string]: string },
+    currentUser: UserProfile | null,
+    categories: Category[]
   }>;
 
   expense: any = {
@@ -125,7 +175,9 @@ export class AddSharedExpenseComponent {
     amount: null,
     paidBy: '',
     splitBetween: [],
-    date: new Date()
+    date: new Date(),
+    addToPersonalExpenses: false,
+    personalCategoryId: ''
   };
 
   readonly ChevronLeftIcon = ChevronLeft;
@@ -143,8 +195,11 @@ export class AddSharedExpenseComponent {
         const memberNames: { [key: string]: string } = {};
         const userQueries = group.members.map(m => this.sharedService.getUserProfile(m).pipe(take(1)));
 
-        return combineLatest(userQueries).pipe(
-          map(profiles => {
+        return combineLatest([
+          combineLatest(userQueries),
+          this.authService.user$.pipe(take(1))
+        ]).pipe(
+          switchMap(([profiles, currentUser]) => {
             profiles.forEach((p, index) => {
               if (p) {
                 memberNames[group.members[index]] = p.displayName || p.email || group.members[index];
@@ -154,14 +209,21 @@ export class AddSharedExpenseComponent {
             });
 
             // Init defaults
-            this.authService.user$.pipe(take(1)).subscribe(user => {
-              if (user && !this.expense.paidBy) {
-                this.expense.paidBy = user.uid;
-                this.expense.splitBetween = [...group.members];
-              }
-            });
+            if (currentUser && !this.expense.paidBy) {
+              this.expense.paidBy = currentUser.uid;
+              this.expense.splitBetween = [...group.members];
+            }
 
-            return { group, memberNames };
+            const categories$ = currentUser ? this.budgetService.getCategories(currentUser.uid).pipe(take(1)) : of([]);
+
+            return categories$.pipe(
+              map(categories => ({
+                group,
+                memberNames,
+                currentUser,
+                categories
+              }))
+            );
           })
         );
       }),
@@ -187,7 +249,11 @@ export class AddSharedExpenseComponent {
   }
 
   isFormValid() {
-    return this.expense.title && this.expense.amount > 0 && this.expense.paidBy && this.expense.splitBetween.length > 0;
+    const baseValid = this.expense.title && this.expense.amount > 0 && this.expense.paidBy && this.expense.splitBetween.length > 0;
+    if (this.expense.addToPersonalExpenses) {
+      return baseValid && this.expense.personalCategoryId;
+    }
+    return baseValid;
   }
 
   async saveExpense(groupId: string) {
