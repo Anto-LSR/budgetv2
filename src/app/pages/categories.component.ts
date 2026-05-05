@@ -8,10 +8,13 @@ import { Router, RouterModule } from '@angular/router';
 import { take, switchMap, of, Observable } from 'rxjs';
 import { Category, UserProfile } from '../models/budget.models';
 
+import { NavigationComponent } from '../components/navigation.component';
+import { LoaderComponent } from '../components/loader.component';
+
 @Component({
   selector: 'app-categories',
   standalone: true,
-  imports: [CommonModule, FormsModule, LucideAngularModule, RouterModule],
+  imports: [CommonModule, FormsModule, LucideAngularModule, RouterModule, NavigationComponent, LoaderComponent],
   template: `
     <div class="min-h-screen bg-slate-50">
       <header class="p-6 bg-white flex items-center justify-between shadow-sm">
@@ -23,6 +26,8 @@ import { Category, UserProfile } from '../models/budget.models';
       </header>
 
       <main class="p-6">
+        <!-- Mode Switcher -->
+        <app-navigation activeMode="budget"></app-navigation>
         <!-- Add Category Form -->
         <div class="bg-white p-6 rounded-3xl shadow-sm mb-8 border border-slate-100">
           <h2 class="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">Nouvelle Catégorie</h2>
@@ -55,6 +60,9 @@ import { Category, UserProfile } from '../models/budget.models';
 
         <!-- Categories List -->
         <div class="space-y-4">
+          <div *ngIf="(categories$ | async) === null" class="py-8">
+            <app-loader message="Chargement des catégories..."></app-loader>
+          </div>
           <div *ngFor="let cat of categories$ | async" class="bg-white p-4 rounded-2xl flex items-center gap-4 shadow-sm border border-slate-50">
             <div class="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold" [style.backgroundColor]="cat.color">
               {{ cat.name.substring(0,1) }}

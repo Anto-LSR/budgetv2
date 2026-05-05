@@ -14,9 +14,11 @@ body {
 .min-w-\[100px\] { min-width: 100px; }
 
 .min-h-screen { min-height: 100vh; }
+.bg-slate-100 { background-color: #f1f5f9; }
 .bg-slate-50 { background-color: #f8fafc; }
 .bg-white { background-color: #ffffff; }
 .bg-indigo-600 { background-color: #4f46e5; }
+.bg-indigo-50 { background-color: #eef2ff; }
 .bg-indigo-100 { background-color: #e0e7ff; }
 .bg-slate-900 { background-color: #0f172a; }
 .bg-slate-900\/20 { background-color: rgba(15, 23, 42, 0.2); }
@@ -102,6 +104,7 @@ body {
 .shadow-xl { box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1); }
 .shadow-indigo-200 { --tw-shadow-color: rgba(199, 210, 254, 0.5); box-shadow: 0 10px 15px -3px var(--tw-shadow-color); }
 .shadow-indigo-100 { --tw-shadow-color: rgba(224, 231, 255, 0.5); box-shadow: 0 10px 15px -3px var(--tw-shadow-color); }
+.shadow-indigo-50 { --tw-shadow-color: rgba(224, 231, 255, 0.2); box-shadow: 0 4px 6px -1px var(--tw-shadow-color); }
 .shadow-emerald-100 { --tw-shadow-color: rgba(209, 250, 229, 0.5); box-shadow: 0 10px 15px -3px var(--tw-shadow-color); }
 .shadow-red-100 { --tw-shadow-color: rgba(254, 226, 226, 0.5); box-shadow: 0 10px 15px -3px var(--tw-shadow-color); }
 .shadow-lg { box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); }
@@ -208,6 +211,15 @@ input {
 .border-2 { border-width: 2px; }
 
 /* Animations */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
 @keyframes slideInFromBottom {
   from {
     transform: translateY(100%);

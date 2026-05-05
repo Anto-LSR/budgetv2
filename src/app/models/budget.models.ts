@@ -48,3 +48,23 @@ export interface Salary {
   year: number;
   userId: string;
 }
+
+export interface SharedGroup {
+  id?: string;
+  name: string;
+  members: string[]; // UIDs des membres
+  memberProfiles?: UserProfile[];
+  createdBy: string;
+  createdAt: any;
+}
+
+export interface SharedExpense {
+  id?: string;
+  groupId: string;
+  title: string;
+  amount: number;
+  paidBy: string; // UID du membre qui a payé
+  splitBetween: string[]; // UIDs des membres concernés
+  date: any;
+  createdAt: any;
+}

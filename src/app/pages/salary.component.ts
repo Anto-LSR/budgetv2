@@ -7,12 +7,16 @@ import { LucideAngularModule, ChevronLeft, Check } from 'lucide-angular';
 import { Router, RouterModule, ActivatedRoute } from '@angular/router';
 import { take } from 'rxjs';
 
+import { NavigationComponent } from '../components/navigation.component';
+import { LoaderComponent } from '../components/loader.component';
+
 @Component({
   selector: 'app-salary',
   standalone: true,
-  imports: [CommonModule, FormsModule, LucideAngularModule, RouterModule],
+  imports: [CommonModule, FormsModule, LucideAngularModule, RouterModule, NavigationComponent, LoaderComponent],
   template: `
     <div class="min-h-screen bg-slate-50">
+      <app-loader *ngIf="loading" [fullScreen]="true" message="Récupération du salaire..."></app-loader>
       <header class="p-6 bg-white flex items-center justify-between shadow-sm">
         <button (click)="back()" class="p-2 -ml-2 text-slate-900">
           <lucide-icon [name]="ChevronLeftIcon" class="w-6 h-6"></lucide-icon>
@@ -22,6 +26,8 @@ import { take } from 'rxjs';
       </header>
 
       <main class="p-6">
+        <!-- Mode Switcher -->
+        <app-navigation activeMode="budget"></app-navigation>
         <div class="bg-white p-8 rounded-[32px] shadow-sm border border-slate-100">
           <p class="text-slate-500 text-sm mb-6 text-center">
             Saisissez votre salaire net pour le mois de
@@ -64,6 +70,9 @@ export class SalaryComponent implements OnInit {
   salaryAmount = 0;
   monthDate = new Date();
 
+  isBrowser = isPlatformBrowser(this.platformId);
+  loading = false;
+
   ngOnInit() {
     this.route.queryParams.subscribe(params => {
       const month = params['month'];
@@ -76,18 +85,27 @@ export class SalaryComponent implements OnInit {
   }
 
   async loadSalary() {
-    if (!isPlatformBrowser(this.platformId)) return;
+    if (!this.isBrowser) return;
+    this.loading = true;
     const user = await this.authService.user$.pipe(take(1)).toPromise();
     if (user) {
       this.budgetService.getSalaryByMonth(
         user.uid,
         this.monthDate.getMonth(),
         this.monthDate.getFullYear()
-      ).pipe(take(1)).subscribe(salaries => {
-        if (salaries && salaries.length > 0) {
-          this.salaryAmount = salaries[0].amount;
+      ).pipe(take(1)).subscribe({
+        next: (salaries) => {
+          if (salaries && salaries.length > 0) {
+            this.salaryAmount = salaries[0].amount;
+          }
+          this.loading = false;
+        },
+        error: () => {
+          this.loading = false;
         }
       });
+    } else {
+      this.loading = false;
     }
   }
 

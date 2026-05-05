@@ -15,10 +15,13 @@ interface CategoryStat {
   percentage: number;
 }
 
+import { NavigationComponent } from '../components/navigation.component';
+import { LoaderComponent } from '../components/loader.component';
+
 @Component({
   selector: 'app-stats',
   standalone: true,
-  imports: [CommonModule, LucideAngularModule, RouterModule],
+  imports: [CommonModule, LucideAngularModule, RouterModule, NavigationComponent, LoaderComponent],
   template: `
     <div class="min-h-screen bg-slate-50 pb-12">
       <header class="p-6 bg-white flex items-center justify-between shadow-sm sticky top-0 z-20">
@@ -30,6 +33,8 @@ interface CategoryStat {
       </header>
 
       <main class="p-6">
+        <!-- Mode Switcher -->
+        <app-navigation activeMode="budget"></app-navigation>
         <!-- Range Selector -->
         <div class="bg-white p-2 rounded-2xl flex gap-2 mb-8 shadow-sm border border-slate-100">
           <button
@@ -136,10 +141,7 @@ interface CategoryStat {
         </ng-template>
 
         <ng-template #loading>
-            <div class="flex flex-col items-center justify-center py-20">
-                <div class="w-12 h-12 border-4 border-indigo-600/20 border-t-indigo-600 rounded-full animate-spin mb-4"></div>
-                <p class="text-slate-400 font-medium">Analyse de vos finances...</p>
-            </div>
+          <app-loader message="Analyse de vos finances..."></app-loader>
         </ng-template>
       </main>
     </div>

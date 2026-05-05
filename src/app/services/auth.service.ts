@@ -1,6 +1,7 @@
 import { Injectable, inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { Auth, authState, signInWithPopup, signInWithRedirect, GoogleAuthProvider, signOut, getRedirectResult } from '@angular/fire/auth';
+import { Firestore, doc, setDoc } from '@angular/fire/firestore';
 import { Observable, map, from, tap } from 'rxjs';
 import { UserProfile } from '../models/budget.models';
 
@@ -9,10 +10,16 @@ import { UserProfile } from '../models/budget.models';
 })
 export class AuthService {
   private auth = inject(Auth);
+  private firestore = inject(Firestore);
   private platformId = inject(PLATFORM_ID);
 
   user$: Observable<UserProfile | null> = authState(this.auth).pipe(
-    map(user => user ? { uid: user.uid, email: user.email, displayName: user.displayName } : null)
+    map(user => user ? { uid: user.uid, email: user.email, displayName: user.displayName } : null),
+    tap(user => {
+      if (user) {
+        this.saveUserProfile(user);
+      }
+    })
   );
 
   constructor() {
@@ -21,6 +28,12 @@ export class AuthService {
         console.error('Erreur lors de la récupération du résultat de redirection:', err);
       });
     }
+  }
+
+  private saveUserProfile(user: UserProfile) {
+    if (!isPlatformBrowser(this.platformId)) return;
+    const userRef = doc(this.firestore, `users/${user.uid}`);
+    setDoc(userRef, user, { merge: true });
   }
 
   async loginWithGoogle() {

@@ -7,12 +7,15 @@ import { Router, RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { map, switchMap, of, BehaviorSubject, combineLatest, take } from 'rxjs';
 
+import { NavigationComponent } from '../components/navigation.component';
+import { LoaderComponent } from '../components/loader.component';
+
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, LucideAngularModule, RouterModule, FormsModule],
+  imports: [CommonModule, LucideAngularModule, RouterModule, FormsModule, NavigationComponent, LoaderComponent],
   template: `
-    <div class="min-h-screen bg-slate-50 pb-24" *ngIf="(user$ | async) as user">
+    <div class="min-h-screen bg-slate-50 pb-24" *ngIf="(user$ | async) as user; else fullPageLoader">
       <!-- Header -->
       <header class="bg-white px-6 pt-12 pb-6 rounded-b-[40px] shadow-sm">
         <div class="flex justify-between items-center mb-6">
@@ -43,6 +46,9 @@ import { map, switchMap, of, BehaviorSubject, combineLatest, take } from 'rxjs';
             </button>
           </div>
         </div>
+
+        <!-- Mode Switcher -->
+        <app-navigation activeMode="budget"></app-navigation>
 
         <!-- Financial Summary Cards -->
         <div class="grid grid-cols-2 gap-4 mb-6">
@@ -193,6 +199,10 @@ import { map, switchMap, of, BehaviorSubject, combineLatest, take } from 'rxjs';
         </div>
 
         <div class="space-y-4">
+          <div *ngIf="(expenses$ | async) === null" class="py-12">
+            <app-loader message="Chargement des dépenses..."></app-loader>
+          </div>
+
           <div *ngFor="let expense of filteredExpenses$ | async" class="bg-white p-4 rounded-2xl flex items-center gap-4 shadow-sm border border-slate-50 group">
             <div
               class="w-12 h-12 rounded-xl flex items-center justify-center text-white shrink-0"
@@ -267,6 +277,10 @@ import { map, switchMap, of, BehaviorSubject, combineLatest, take } from 'rxjs';
         </button>
       </div>
     </div>
+
+    <ng-template #fullPageLoader>
+      <app-loader [fullScreen]="true" message="Initialisation..."></app-loader>
+    </ng-template>
   `
 })
 export class DashboardComponent {
