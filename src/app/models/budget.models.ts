@@ -56,6 +56,7 @@ export interface SharedGroup {
   memberProfiles?: UserProfile[];
   createdBy: string;
   createdAt: any;
+  archivedBy?: string[]; // UIDs des membres ayant archivé le groupe
 }
 
 export interface SharedExpense {

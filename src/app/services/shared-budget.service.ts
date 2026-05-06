@@ -1,6 +1,6 @@
 import { Injectable, inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
-import { Firestore, collection, collectionData, addDoc, query, where, doc, deleteDoc, orderBy, Timestamp, getDoc, updateDoc, arrayUnion } from '@angular/fire/firestore';
+import { Firestore, collection, collectionData, addDoc, query, where, doc, deleteDoc, orderBy, Timestamp, getDoc, updateDoc, arrayUnion, arrayRemove } from '@angular/fire/firestore';
 import { Observable, of, from, switchMap, map, combineLatest } from 'rxjs';
 import { SharedGroup, SharedExpense, UserProfile, Settlement } from '../models/budget.models';
 import { BudgetService } from './budget.service';
@@ -14,11 +14,37 @@ export class SharedBudgetService {
   private budgetService = inject(BudgetService);
 
   // Groupes
-  getGroups(userId: string): Observable<SharedGroup[]> {
+  getGroups(userId: string, includeArchived = false): Observable<SharedGroup[]> {
     if (!isPlatformBrowser(this.platformId)) return of([]);
     const groupsRef = collection(this.firestore, 'groups');
+
+    // On ne peut pas facilement faire un "NOT array-contains" dans Firebase.
+    // On va donc récupérer tous les groupes où l'utilisateur est membre et filtrer en local
+    // ou alors on accepte de faire le filtrage dans le pipe map.
+
     const q = query(groupsRef, where('members', 'array-contains', userId), orderBy('createdAt', 'desc'));
-    return collectionData(q, { idField: 'id' }) as Observable<SharedGroup[]>;
+    return (collectionData(q, { idField: 'id' }) as Observable<SharedGroup[]>).pipe(
+      map(groups => groups.filter(group => {
+        const isArchivedByMe = group.archivedBy?.includes(userId) || false;
+        return includeArchived ? isArchivedByMe : !isArchivedByMe;
+      }))
+    );
+  }
+
+  archiveGroup(groupId: string, userId: string): Promise<void> {
+    if (!isPlatformBrowser(this.platformId)) return Promise.resolve();
+    const groupRef = doc(this.firestore, `groups/${groupId}`);
+    return updateDoc(groupRef, {
+      archivedBy: arrayUnion(userId)
+    });
+  }
+
+  unarchiveGroup(groupId: string, userId: string): Promise<void> {
+    if (!isPlatformBrowser(this.platformId)) return Promise.resolve();
+    const groupRef = doc(this.firestore, `groups/${groupId}`);
+    return updateDoc(groupRef, {
+      archivedBy: arrayRemove(userId)
+    });
   }
 
   getGroup(groupId: string): Observable<SharedGroup | undefined> {

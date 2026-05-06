@@ -1,6 +1,6 @@
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { LucideAngularModule, ChevronLeft, UserPlus, Plus, Trash2, Copy, Check, HandCoins } from 'lucide-angular';
+import { LucideAngularModule, ChevronLeft, UserPlus, Plus, Trash2, Copy, Check, HandCoins, Archive, ArchiveRestore } from 'lucide-angular';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { SharedBudgetService } from '../services/shared-budget.service';
 import { AuthService } from '../services/auth.service';
@@ -31,13 +31,29 @@ import { LoaderComponent } from '../components/loader.component';
         <app-navigation activeMode="shared"></app-navigation>
 
         <!-- Group Actions -->
-        <div class="flex gap-2">
+        <div class="flex gap-2" *ngIf="data.group && !(data.group.archivedBy?.includes(userId))">
           <button
             (click)="copyInviteLink()"
             class="flex-1 flex items-center justify-center gap-2 py-3 bg-slate-100 rounded-2xl text-slate-600 font-bold text-sm active:scale-95 transition-all"
           >
             <lucide-icon [name]="copied ? CheckIcon : CopyIcon" class="w-4 h-4"></lucide-icon>
             {{ copied ? 'Lien copié !' : 'Inviter' }}
+          </button>
+          <button
+            (click)="archiveGroup(data.group.id!)"
+            class="flex-1 flex items-center justify-center gap-2 py-3 bg-slate-100 rounded-2xl text-slate-600 font-bold text-sm active:scale-95 transition-all"
+          >
+            <lucide-icon [name]="ArchiveIcon" class="w-4 h-4"></lucide-icon>
+            Archiver
+          </button>
+        </div>
+        <div class="flex gap-2" *ngIf="data.group && data.group.archivedBy?.includes(userId)">
+          <button
+            (click)="unarchiveGroup(data.group.id!)"
+            class="flex-1 flex items-center justify-center gap-2 py-3 bg-emerald-50 rounded-2xl text-emerald-600 font-bold text-sm active:scale-95 transition-all border border-emerald-100/50"
+          >
+            <lucide-icon [name]="ArchiveRestoreIcon" class="w-4 h-4"></lucide-icon>
+            Désarchiver
           </button>
         </div>
       </header>
@@ -184,9 +200,16 @@ export class SharedExpenseDetailsComponent {
   readonly TrashIcon = Trash2;
   readonly CopyIcon = Copy;
   readonly CheckIcon = Check;
+  readonly ArchiveIcon = Archive;
+  readonly ArchiveRestoreIcon = ArchiveRestore;
   readonly HandCoinsIcon = HandCoins;
 
+  userId: string = '';
+
   constructor() {
+    this.authService.user$.subscribe(user => {
+      if (user) this.userId = user.uid;
+    });
     this.data$ = this.route.params.pipe(
       switchMap(params => {
         const groupId = params['id'];
@@ -262,6 +285,27 @@ export class SharedExpenseDetailsComponent {
 
   // Stockage temporaire des noms pour la boîte de dialogue de confirmation
   private memberNamesFallback: { [key: string]: string } = {};
+
+  async archiveGroup(groupId: string) {
+    const confirmed = await this.confirmService.confirm({
+      title: 'Archiver le groupe',
+      message: 'Le groupe sera déplacé dans vos archives. Vous pourrez le réactiver plus tard. Les autres membres continueront à le voir.',
+      confirmText: 'Archiver'
+    });
+
+    if (confirmed) {
+      if (this.userId) {
+        await this.sharedService.archiveGroup(groupId, this.userId);
+        this.router.navigate(['/shared-expenses']);
+      }
+    }
+  }
+
+  unarchiveGroup(groupId: string) {
+    if (this.userId) {
+      this.sharedService.unarchiveGroup(groupId, this.userId);
+    }
+  }
 
   copyInviteLink() {
     const groupId = this.route.snapshot.params['id'];
