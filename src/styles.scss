@@ -98,6 +98,7 @@ body {
 .uppercase { text-transform: uppercase; }
 .tracking-wider { letter-spacing: 0.05em; }
 .tracking-widest { letter-spacing: 0.1em; }
+.tracking-tighter { letter-spacing: -0.05em; }
 .text-center { text-align: center; }
 .truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .whitespace-nowrap { white-space: nowrap; }
@@ -180,8 +181,12 @@ button {
 .hover\:bg-slate-100:hover { background-color: #f1f5f9; }
 .hover\:bg-amber-50:hover { background-color: #fffbeb; }
 .hover\:text-amber-600:hover { color: #d97706; }
+.bg-amber-100 { background-color: #fef3c7; }
 .text-amber-600 { color: #d97706; }
+.bg-amber-400 { background-color: #fbbf24; }
 .bg-amber-50 { background-color: #fffbeb; }
+.leading-tight { line-height: 1.25; }
+.text-\[9px\] { font-size: 9px; }
 .bg-emerald-50 { background-color: #ecfdf5; }
 .text-emerald-500 { color: #10b981; }
 .border-amber-100\/50 { border-color: rgba(254, 243, 199, 0.5); }
@@ -190,6 +195,8 @@ button {
 .group:hover .group-hover\:scale-110 { transform: scale(1.1); }
 .group:hover .group-hover\:opacity-100 { opacity: 1; }
 .group:hover .group-hover\:text-emerald-600 { color: #059669; }
+.group-hover\/member:opacity-100 { opacity: 0; }
+.group\/member:hover .group-hover\/member:opacity-100 { opacity: 1; }
 
 /* Custom */
 .bg-striped {

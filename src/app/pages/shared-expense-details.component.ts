@@ -1,6 +1,6 @@
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { LucideAngularModule, ChevronLeft, UserPlus, Plus, Trash2, Copy, Check, HandCoins, Archive, ArchiveRestore } from 'lucide-angular';
+import { LucideAngularModule, ChevronLeft, UserPlus, Plus, Trash2, Copy, Check, HandCoins, Archive, ArchiveRestore, UserMinus, Crown, X } from 'lucide-angular';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { SharedBudgetService } from '../services/shared-budget.service';
 import { AuthService } from '../services/auth.service';
@@ -64,20 +64,44 @@ import { LoaderComponent } from '../components/loader.component';
           <h2 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 px-1">Équilibre</h2>
 
           <div class="bg-white rounded-[32px] border border-slate-100 shadow-sm p-6 space-y-6">
-            <!-- Individual Balances -->
             <div class="space-y-4 pb-6 border-b border-slate-50">
-              <div *ngFor="let memberId of data.group.members" class="flex items-center justify-between">
+              <div *ngFor="let memberId of data.group.members" class="flex items-center justify-between group/member py-1">
                 <div class="flex items-center gap-3">
-                  <div class="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-500 font-bold">
-                    {{ (data.memberNames[memberId] || '?')[0].toUpperCase() }}
+                  <div class="relative">
+                    <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold"
+                         [class.bg-amber-100]="memberId === data.group.createdBy"
+                         [class.text-amber-600]="memberId === data.group.createdBy"
+                         [class.bg-slate-100]="memberId !== data.group.createdBy"
+                         [class.text-slate-500]="memberId !== data.group.createdBy">
+                      <ng-container *ngIf="memberId === data.group.createdBy; else initialTemplate">
+                        <lucide-icon [name]="CrownIcon" class="w-5 h-5"></lucide-icon>
+                      </ng-container>
+                      <ng-template #initialTemplate>
+                        {{ (data.memberNames[memberId] || '?')[0].toUpperCase() }}
+                      </ng-template>
+                    </div>
                   </div>
-                  <span class="font-bold text-slate-700">{{ data.memberNames[memberId] || 'Utilisateur' }}</span>
+                  <div class="flex flex-col">
+                    <span class="font-bold text-slate-700">{{ data.memberNames[memberId] || 'Utilisateur' }}</span>
+                  </div>
                 </div>
-                <div [class]="data.balances[memberId] >= -0.01 ? 'text-emerald-600' : 'text-red-500'" class="font-black text-right">
-                  <div class="text-xs uppercase opacity-50 font-bold mb-0.5">
-                    {{ data.balances[memberId] >= -0.01 ? 'à recevoir' : 'à payer' }}
+                <div class="flex items-center gap-3">
+                  <div [class]="data.balances[memberId] >= -0.01 ? 'text-emerald-600' : 'text-red-500'" class="font-black text-right flex flex-col justify-center min-w-[80px]">
+                    <div class="text-[9px] uppercase opacity-50 font-bold leading-tight">
+                      {{ data.balances[memberId] >= -0.01 ? 'à recevoir' : 'à payer' }}
+                    </div>
+                    <div class="leading-tight">
+                      {{ data.balances[memberId] > 0.01 ? '+' : '' }}{{ data.balances[memberId] | number:'1.2-2' }} €
+                    </div>
                   </div>
-                  {{ data.balances[memberId] > 0.01 ? '+' : '' }}{{ data.balances[memberId] | number:'1.2-2' }} €
+                  <button
+                    *ngIf="data.group.createdBy === userId && memberId !== userId"
+                    (click)="removeMember(data.group.id!, memberId)"
+                    class="p-2 text-red-500 bg-red-50 rounded-xl transition-all"
+                    title="Supprimer du groupe"
+                  >
+                    <lucide-icon [name]="XIcon" class="w-4 h-4"></lucide-icon>
+                  </button>
                 </div>
               </div>
             </div>
@@ -210,6 +234,9 @@ export class SharedExpenseDetailsComponent {
   readonly ArchiveIcon = Archive;
   readonly ArchiveRestoreIcon = ArchiveRestore;
   readonly HandCoinsIcon = HandCoins;
+  readonly UserMinusIcon = UserMinus;
+  readonly CrownIcon = Crown;
+  readonly XIcon = X;
 
   userId: string = '';
 
@@ -338,6 +365,24 @@ export class SharedExpenseDetailsComponent {
   unarchiveGroup(groupId: string) {
     if (this.userId) {
       this.sharedService.unarchiveGroup(groupId, this.userId);
+    }
+  }
+
+  async removeMember(groupId: string, memberId: string) {
+    const confirmed = await this.confirmService.confirm({
+      title: 'Supprimer un membre',
+      message: 'Êtes-vous sûr de vouloir retirer ce membre du groupe ?',
+      confirmText: 'Supprimer',
+      cancelText: 'Annuler',
+      type: 'danger'
+    });
+
+    if (confirmed) {
+      try {
+        await this.sharedService.removeMember(groupId, memberId);
+      } catch (error: any) {
+        alert(error.message || 'Une erreur est survenue lors de la suppression du membre.');
+      }
     }
   }
 

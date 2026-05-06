@@ -1,7 +1,8 @@
 import { Injectable, inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { Firestore, collection, collectionData, addDoc, query, where, doc, deleteDoc, orderBy, Timestamp, getDoc, updateDoc, arrayUnion, arrayRemove } from '@angular/fire/firestore';
-import { Observable, of, from, switchMap, map, combineLatest } from 'rxjs';
+import { Observable, of, from, switchMap, map, combineLatest, take } from 'rxjs';
+import { firstValueFrom } from 'rxjs';
 import { SharedGroup, SharedExpense, UserProfile, Settlement } from '../models/budget.models';
 import { BudgetService } from './budget.service';
 
@@ -240,6 +241,36 @@ export class SharedBudgetService {
       type: 'repayment',
       date: Timestamp.now(),
       createdAt: Timestamp.now()
+    });
+  }
+
+  async removeMember(groupId: string, userIdToRemove: string): Promise<void> {
+    if (!isPlatformBrowser(this.platformId)) return Promise.resolve();
+
+    // 1. Récupérer les dépenses pour vérifier la balance
+    const expensesRef = collection(this.firestore, 'sharedExpenses');
+    const q = query(expensesRef, where('groupId', '==', groupId));
+    const expenses$ = (collectionData(q, { idField: 'id' }) as Observable<SharedExpense[]>).pipe(take(1));
+    const expenses = await firstValueFrom(expenses$) || [];
+
+    // 2. Récupérer le groupe pour avoir la liste des membres
+    const groupRef = doc(this.firestore, `groups/${groupId}`);
+    const groupSnap = await getDoc(groupRef);
+    if (!groupSnap.exists()) throw new Error('Groupe introuvable');
+    const group = groupSnap.data() as SharedGroup;
+
+    // 3. Calculer la balance
+    const balances = this.calculateBalance(group.members, expenses);
+    const userBalance = balances[userIdToRemove] || 0;
+
+    // 4. Vérifier si la balance est soldée (proche de 0)
+    if (Math.abs(userBalance) > 0.01) {
+      throw new Error('Impossible de supprimer ce membre : son compte n\'est pas soldé.');
+    }
+
+    // 5. Supprimer le membre du groupe
+    return updateDoc(groupRef, {
+      members: arrayRemove(userIdToRemove)
     });
   }
 }
