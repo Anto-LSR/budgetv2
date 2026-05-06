@@ -1,6 +1,6 @@
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { LucideAngularModule, ChevronLeft, Save, Check } from 'lucide-angular';
+import { LucideAngularModule, ChevronLeft, Save, Check, HandCoins } from 'lucide-angular';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { SharedBudgetService } from '../services/shared-budget.service';
 import { AuthService } from '../services/auth.service';
@@ -22,14 +22,32 @@ import { LoaderComponent } from '../components/loader.component';
           <button [routerLink]="['/shared-expenses', data.group.id]" class="p-2 -ml-2 text-slate-400">
             <lucide-icon [name]="ChevronLeftIcon" class="w-6 h-6"></lucide-icon>
           </button>
-          <h1 class="text-2xl font-bold text-slate-900">Ajouter une dépense</h1>
+          <h1 class="text-2xl font-bold text-slate-900">{{ isEditMode ? 'Modifier la dépense' : 'Ajouter une dépense' }}</h1>
         </div>
       </header>
 
       <div class="px-6 space-y-6">
+        <!-- Type Selector -->
+        <div *ngIf="!isEditMode" class="flex gap-2 p-1 bg-white rounded-2xl border border-slate-100 shadow-sm">
+          <button
+            (click)="expense.type = 'expense'"
+            [class]="expense.type !== 'repayment' ? 'bg-slate-900 text-white' : 'text-slate-500'"
+            class="flex-1 py-3 rounded-xl text-xs font-bold transition-all"
+          >
+            Dépense
+          </button>
+          <button
+            (click)="expense.type = 'repayment'; expense.title = 'Remboursement'"
+            [class]="expense.type === 'repayment' ? 'bg-emerald-600 text-white' : 'text-slate-500'"
+            class="flex-1 py-3 rounded-xl text-xs font-bold transition-all"
+          >
+            Remboursement
+          </button>
+        </div>
+
         <!-- Title & Amount -->
         <div class="bg-white rounded-[32px] p-8 border border-slate-100 shadow-sm space-y-6">
-          <div>
+          <div *ngIf="expense.type !== 'repayment'">
             <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 block px-1">Titre</label>
             <input
               [(ngModel)]="expense.title"
@@ -50,8 +68,39 @@ import { LoaderComponent } from '../components/loader.component';
           </div>
         </div>
 
-        <!-- Paid By -->
-        <div>
+        <!-- Repayment logic: From -> To -->
+        <div *ngIf="expense.type === 'repayment'" class="space-y-6">
+          <div>
+            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 block px-1">De (celui qui a payé)</label>
+            <div class="flex flex-wrap gap-2">
+              <button
+                *ngFor="let memberId of data.group.members"
+                (click)="expense.paidBy = memberId"
+                [class]="expense.paidBy === memberId ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-100' : 'bg-white text-slate-600 border border-slate-100'"
+                class="px-4 py-2.5 rounded-xl text-sm font-bold transition-all active:scale-95"
+              >
+                {{ data.memberNames[memberId] }}
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 block px-1">À (celui qui reçoit)</label>
+            <div class="flex flex-wrap gap-2">
+              <button
+                *ngFor="let memberId of data.group.members"
+                (click)="expense.splitBetween = [memberId]"
+                [class]="expense.splitBetween[0] === memberId ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'bg-white text-slate-600 border border-slate-100'"
+                class="px-4 py-2.5 rounded-xl text-sm font-bold transition-all active:scale-95"
+              >
+                {{ data.memberNames[memberId] }}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Paid By (Expense mode) -->
+        <div *ngIf="expense.type !== 'repayment'">
           <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 block px-1">Payé par</label>
           <div class="flex flex-wrap gap-2">
             <button
@@ -65,8 +114,8 @@ import { LoaderComponent } from '../components/loader.component';
           </div>
         </div>
 
-        <!-- Shared With -->
-        <div>
+        <!-- Shared With (Expense mode) -->
+        <div *ngIf="expense.type !== 'repayment'">
           <div class="flex justify-between items-center mb-3 px-1">
             <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Partagé avec</label>
             <button (click)="toggleAll(data.group.members)" class="text-[10px] font-bold text-indigo-600 uppercase tracking-widest">
@@ -96,7 +145,7 @@ import { LoaderComponent } from '../components/loader.component';
         </div>
 
         <!-- Personal Expense Option -->
-        <div *ngIf="data.currentUser && expense.paidBy === data.currentUser.uid" class="space-y-4">
+        <div *ngIf="!isEditMode && data.currentUser && expense.paidBy === data.currentUser.uid" class="space-y-4">
           <div
             (click)="expense.addToPersonalExpenses = !expense.addToPersonalExpenses"
             class="bg-white rounded-[32px] p-6 border border-slate-100 shadow-sm flex items-center justify-between active:bg-slate-50 transition-colors"
@@ -146,7 +195,7 @@ import { LoaderComponent } from '../components/loader.component';
           [disabled]="!isFormValid()"
           class="w-full bg-slate-900 text-white font-bold py-4 rounded-2xl shadow-xl active:scale-95 transition-all disabled:opacity-50 mt-4"
         >
-          Enregistrer la dépense
+          {{ isEditMode ? 'Modifier la dépense' : 'Enregistrer la dépense' }}
         </button>
       </div>
     </div>
@@ -170,6 +219,9 @@ export class AddSharedExpenseComponent {
     categories: Category[]
   }>;
 
+  isEditMode = false;
+  expenseId: string | null = null;
+
   expense: any = {
     title: '',
     amount: null,
@@ -177,20 +229,35 @@ export class AddSharedExpenseComponent {
     splitBetween: [],
     date: new Date(),
     addToPersonalExpenses: false,
-    personalCategoryId: ''
+    personalCategoryId: '',
+    type: 'expense'
   };
 
   readonly ChevronLeftIcon = ChevronLeft;
   readonly CheckIcon = Check;
+  readonly HandCoinsIcon = HandCoins;
 
   constructor() {
     this.data$ = this.route.params.pipe(
       switchMap(params => {
         const groupId = params['id'];
-        return this.sharedService.getGroup(groupId);
+        this.expenseId = params['expenseId'] || null;
+        this.isEditMode = !!this.expenseId;
+
+        return combineLatest({
+          group: this.sharedService.getGroup(groupId),
+          existingExpense: this.isEditMode ? this.sharedService.getSharedExpense(this.expenseId!).pipe(take(1)) : of(null)
+        });
       }),
-      switchMap(group => {
+      switchMap(({ group, existingExpense }) => {
         if (!group) return of(null);
+
+        if (existingExpense) {
+          this.expense = {
+            ...existingExpense,
+            date: (existingExpense.date as any).toDate ? (existingExpense.date as any).toDate() : existingExpense.date
+          };
+        }
 
         const memberNames: { [key: string]: string } = {};
         const userQueries = group.members.map(m => this.sharedService.getUserProfile(m).pipe(take(1)));
@@ -209,7 +276,7 @@ export class AddSharedExpenseComponent {
             });
 
             // Init defaults
-            if (currentUser && !this.expense.paidBy) {
+            if (!this.isEditMode && currentUser && !this.expense.paidBy) {
               this.expense.paidBy = currentUser.uid;
               this.expense.splitBetween = [...group.members];
             }
@@ -249,6 +316,9 @@ export class AddSharedExpenseComponent {
   }
 
   isFormValid() {
+    if (this.expense.type === 'repayment') {
+      return this.expense.amount > 0 && this.expense.paidBy && this.expense.splitBetween.length === 1 && this.expense.paidBy !== this.expense.splitBetween[0];
+    }
     const baseValid = this.expense.title && this.expense.amount > 0 && this.expense.paidBy && this.expense.splitBetween.length > 0;
     if (this.expense.addToPersonalExpenses) {
       return baseValid && this.expense.personalCategoryId;
@@ -259,10 +329,22 @@ export class AddSharedExpenseComponent {
   async saveExpense(groupId: string) {
     if (!this.isFormValid()) return;
 
-    await this.sharedService.addSharedExpense({
-      ...this.expense,
-      groupId
-    });
+    if (this.isEditMode && this.expenseId) {
+      await this.sharedService.updateSharedExpense(this.expenseId, {
+        title: this.expense.title,
+        amount: this.expense.amount,
+        paidBy: this.expense.paidBy,
+        splitBetween: this.expense.splitBetween,
+        date: this.expense.date,
+        type: this.expense.type || 'expense'
+      });
+    } else {
+      await this.sharedService.addSharedExpense({
+        ...this.expense,
+        type: this.expense.type || 'expense',
+        groupId
+      });
+    }
 
     this.router.navigate(['/shared-expenses', groupId]);
   }

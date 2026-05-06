@@ -77,14 +77,36 @@ export class SharedBudgetService {
       });
     }
 
-    // On retire les champs temporaires avant de sauvegarder dans Firestore si on veut garder la base propre
-    // ou on les laisse si on veut garder une trace. Ici on va les laisser pour la cohérence de l'interface SharedExpense.
-
     return addDoc(expensesRef, {
       ...expense,
       date: Timestamp.fromDate(new Date(expense.date)),
       createdAt: Timestamp.now()
     });
+  }
+
+  getSharedExpense(id: string): Observable<SharedExpense | undefined> {
+    if (!isPlatformBrowser(this.platformId)) return of(undefined);
+    const expenseRef = doc(this.firestore, `sharedExpenses/${id}`);
+    return from(getDoc(expenseRef)).pipe(
+      map(docSnap => {
+        if (docSnap.exists()) {
+          return { id: docSnap.id, ...docSnap.data() } as SharedExpense;
+        }
+        return undefined;
+      })
+    );
+  }
+
+  async updateSharedExpense(id: string, expense: Partial<SharedExpense>): Promise<void> {
+    if (!isPlatformBrowser(this.platformId)) return Promise.resolve();
+    const expenseRef = doc(this.firestore, `sharedExpenses/${id}`);
+
+    const updateData: any = { ...expense };
+    if (expense.date) {
+      updateData.date = Timestamp.fromDate(new Date(expense.date));
+    }
+
+    return updateDoc(expenseRef, updateData);
   }
 
   deleteSharedExpense(id: string): Promise<void> {
@@ -114,14 +136,25 @@ export class SharedBudgetService {
     members.forEach(m => balance[m] = 0);
 
     expenses.forEach(expense => {
-      // Celui qui a payé a un crédit
-      balance[expense.paidBy] += expense.amount;
+      if (expense.type === 'repayment') {
+        // Un remboursement : celui qui paie (paidBy) réduit sa dette envers celui qui reçoit (splitBetween[0])
+        // Dans notre calcul de balance, paidBy a un crédit, splitBetween a un débit.
+        // Si A rembourse B : A paie, donc A+ montant, B reçoit (est dans splitBetween), donc B- montant.
+        balance[expense.paidBy] += expense.amount;
+        expense.splitBetween.forEach(m => {
+          balance[m] -= expense.amount;
+        });
+      } else {
+        // Dépense classique
+        // Celui qui a payé a un crédit
+        balance[expense.paidBy] += expense.amount;
 
-      // On divise le montant entre les gens concernés
-      const share = expense.amount / expense.splitBetween.length;
-      expense.splitBetween.forEach(m => {
-        balance[m] -= share;
-      });
+        // On divise le montant entre les gens concernés
+        const share = expense.amount / expense.splitBetween.length;
+        expense.splitBetween.forEach(m => {
+          balance[m] -= share;
+        });
+      }
     });
 
     return balance;
@@ -154,7 +187,7 @@ export class SharedBudgetService {
         settlements.push({
           from: debtorId,
           to: creditorId,
-          amount: settlementAmount
+          amount: parseFloat(settlementAmount.toFixed(2))
         });
       }
 
@@ -166,5 +199,21 @@ export class SharedBudgetService {
     }
 
     return settlements;
+  }
+
+  async addRepayment(groupId: string, from: string, to: string, amount: number): Promise<any> {
+    if (!isPlatformBrowser(this.platformId)) return Promise.resolve();
+    const expensesRef = collection(this.firestore, 'sharedExpenses');
+
+    return addDoc(expensesRef, {
+      groupId,
+      title: 'Remboursement',
+      amount,
+      paidBy: from,
+      splitBetween: [to],
+      type: 'repayment',
+      date: Timestamp.now(),
+      createdAt: Timestamp.now()
+    });
   }
 }

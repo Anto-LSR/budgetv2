@@ -1,6 +1,6 @@
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { LucideAngularModule, ChevronLeft, UserPlus, Plus, Trash2, Copy, Check } from 'lucide-angular';
+import { LucideAngularModule, ChevronLeft, UserPlus, Plus, Trash2, Copy, Check, HandCoins } from 'lucide-angular';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { SharedBudgetService } from '../services/shared-budget.service';
 import { AuthService } from '../services/auth.service';
@@ -73,15 +73,24 @@ import { LoaderComponent } from '../components/loader.component';
                 Tout est équilibré ! ✨
               </div>
 
-              <div *ngFor="let settlement of data.settlements" class="bg-slate-50 rounded-2xl p-4 flex items-center justify-between">
-                <div class="flex items-center gap-2 flex-1">
-                  <span class="font-bold text-slate-900 text-sm">{{ data.memberNames[settlement.from] }}</span>
-                  <div class="flex-1 border-t border-dashed border-slate-300 mx-2 mt-1"></div>
-                  <span class="font-bold text-slate-900 text-sm">{{ data.memberNames[settlement.to] }}</span>
+              <div *ngFor="let settlement of data.settlements" class="bg-slate-50 rounded-2xl p-4 flex flex-col gap-3">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2 flex-1">
+                    <span class="font-bold text-slate-900 text-sm">{{ data.memberNames[settlement.from] }}</span>
+                    <div class="flex-1 border-t border-dashed border-slate-300 mx-2 mt-1"></div>
+                    <span class="font-bold text-slate-900 text-sm">{{ data.memberNames[settlement.to] }}</span>
+                  </div>
+                  <div class="ml-4 bg-white px-3 py-1.5 rounded-xl shadow-sm border border-slate-100">
+                    <span class="font-black text-indigo-600 text-sm">{{ settlement.amount | number:'1.2-2' }} €</span>
+                  </div>
                 </div>
-                <div class="ml-4 bg-white px-3 py-1.5 rounded-xl shadow-sm border border-slate-100">
-                  <span class="font-black text-indigo-600 text-sm">{{ settlement.amount | number:'1.2-2' }} €</span>
-                </div>
+                <button
+                  (click)="validateRepayment(data.group.id!, settlement)"
+                  class="w-full py-2.5 bg-indigo-600 text-white rounded-xl text-xs font-bold active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                >
+                  <lucide-icon [name]="CheckIcon" class="w-3.5 h-3.5"></lucide-icon>
+                  Marquer comme remboursé
+                </button>
               </div>
             </div>
           </div>
@@ -95,24 +104,38 @@ import { LoaderComponent } from '../components/loader.component';
           </div>
 
           <div class="space-y-3">
-            <div *ngFor="let expense of data.expenses" class="bg-white p-5 rounded-[28px] border border-slate-100 shadow-sm flex items-center justify-between group">
+            <div *ngFor="let expense of data.expenses"
+                 [routerLink]="expense.type === 'repayment' ? null : ['/shared-expenses', data.group.id, 'edit', expense.id]"
+                 [class.cursor-default]="expense.type === 'repayment'"
+                 class="bg-white p-5 rounded-[28px] border border-slate-100 shadow-sm flex items-center justify-between group active:scale-[0.98] transition-all cursor-pointer">
               <div class="flex items-center gap-4">
-                <div class="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400">
-                  <span class="font-bold text-sm">{{ (data.memberNames[expense.paidBy] || '?')[0].toUpperCase() }}</span>
+                <div [class]="expense.type === 'repayment' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-400'" class="w-12 h-12 rounded-2xl flex items-center justify-center">
+                  <lucide-icon *ngIf="expense.type === 'repayment'" [name]="HandCoinsIcon" class="w-6 h-6"></lucide-icon>
+                  <span *ngIf="expense.type !== 'repayment'" class="font-bold text-sm">{{ (data.memberNames[expense.paidBy] || '?')[0].toUpperCase() }}</span>
                 </div>
                 <div>
-                  <h3 class="font-bold text-slate-900 leading-tight">{{ expense.title }}</h3>
+                  <h3 class="font-bold text-slate-900 leading-tight">
+                    {{ expense.type === 'repayment' ? 'Remboursement' : expense.title }}
+                  </h3>
                   <p class="text-[10px] text-slate-500 mt-0.5">
-                    Payé par <span class="font-bold">{{ data.memberNames[expense.paidBy] || '?' }}</span>
+                    <ng-container *ngIf="expense.type === 'repayment'">
+                      De <span class="font-bold">{{ data.memberNames[expense.paidBy] || '?' }}</span>
+                      à <span class="font-bold">{{ data.memberNames[expense.splitBetween[0]] || '?' }}</span>
+                    </ng-container>
+                    <ng-container *ngIf="expense.type !== 'repayment'">
+                      Payé par <span class="font-bold">{{ data.memberNames[expense.paidBy] || '?' }}</span>
+                    </ng-container>
                     • {{ expense.date.toDate() | date:'dd MMM' }}
                   </p>
                 </div>
               </div>
               <div class="flex flex-col items-end">
                 <span class="font-black text-slate-900">{{ expense.amount | number:'1.2-2' }} €</span>
-                <button (click)="deleteExpense(expense.id!)" class="opacity-0 group-hover:opacity-100 p-1 text-red-400 hover:text-red-600 transition-opacity">
-                  <lucide-icon [name]="TrashIcon" class="w-3.5 h-3.5"></lucide-icon>
-                </button>
+                <div class="flex items-center gap-1 mt-1">
+                  <button (click)="$event.stopPropagation(); deleteExpense(expense.id!)" class="opacity-0 group-hover:opacity-100 p-1 text-red-400 hover:text-red-600 transition-opacity">
+                    <lucide-icon [name]="TrashIcon" class="w-3.5 h-3.5"></lucide-icon>
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -159,6 +182,7 @@ export class SharedExpenseDetailsComponent {
   readonly TrashIcon = Trash2;
   readonly CopyIcon = Copy;
   readonly CheckIcon = Check;
+  readonly HandCoinsIcon = HandCoins;
 
   constructor() {
     this.data$ = this.route.params.pipe(
@@ -194,6 +218,7 @@ export class SharedExpenseDetailsComponent {
             });
 
             const balances = this.sharedService.calculateBalance(group.members, expenses);
+            this.memberNamesFallback = memberNames;
             return {
               group,
               expenses,
@@ -209,10 +234,19 @@ export class SharedExpenseDetailsComponent {
   }
 
   async deleteExpense(id: string) {
-    if (confirm('Supprimer cette dépense ?')) {
+    if (confirm('Supprimer cet élément ?')) {
       await this.sharedService.deleteSharedExpense(id);
     }
   }
+
+  async validateRepayment(groupId: string, settlement: Settlement) {
+    if (confirm(`Confirmer le remboursement de ${settlement.amount}€ de ${this.memberNamesFallback[settlement.from]} à ${this.memberNamesFallback[settlement.to]} ?`)) {
+      await this.sharedService.addRepayment(groupId, settlement.from, settlement.to, settlement.amount);
+    }
+  }
+
+  // Stockage temporaire des noms pour la boîte de dialogue de confirmation
+  private memberNamesFallback: { [key: string]: string } = {};
 
   copyInviteLink() {
     const groupId = this.route.snapshot.params['id'];

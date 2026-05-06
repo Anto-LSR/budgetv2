@@ -25,6 +25,7 @@ export const routes: Routes = [
   { path: 'shared-expenses', component: SharedExpensesComponent, canActivate: [authGuard] },
   { path: 'shared-expenses/:id', component: SharedExpenseDetailsComponent, canActivate: [authGuard] },
   { path: 'shared-expenses/:id/add', component: AddSharedExpenseComponent, canActivate: [authGuard] },
+  { path: 'shared-expenses/:id/edit/:expenseId', component: AddSharedExpenseComponent, canActivate: [authGuard] },
   { path: 'shared-expenses/join/:id', component: JoinGroupComponent, canActivate: [authGuard] },
   { path: '', redirectTo: '/dashboard', pathMatch: 'full' },
   { path: '**', redirectTo: '/dashboard' }

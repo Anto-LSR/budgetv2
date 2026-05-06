@@ -69,6 +69,7 @@ export interface SharedExpense {
   createdAt: any;
   addToPersonalExpenses?: boolean;
   personalCategoryId?: string;
+  type?: 'expense' | 'repayment';
 }
 
 export interface Settlement {
