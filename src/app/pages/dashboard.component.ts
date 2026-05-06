@@ -2,6 +2,7 @@ import { Component, inject, PLATFORM_ID } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { AuthService } from '../services/auth.service';
 import { BudgetService } from '../services/budget.service';
+import { ConfirmService } from '../services/confirm.service';
 import { LucideAngularModule, Plus, TrendingDown, Wallet, LogOut, Tag, Trash2, ChevronLeft, ChevronRight, Zap, Coins, Edit2, Search, ArrowUpDown, Filter, ChevronUp, ChevronDown, Repeat, BarChart3, TrendingUp } from 'lucide-angular';
 import { Router, RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -286,6 +287,7 @@ import { LoaderComponent } from '../components/loader.component';
 export class DashboardComponent {
   private authService = inject(AuthService);
   private budgetService = inject(BudgetService);
+  private confirmService = inject(ConfirmService);
   private router = inject(Router);
   private platformId = inject(PLATFORM_ID);
 
@@ -455,21 +457,37 @@ export class DashboardComponent {
   }
 
   async deleteExpense(id: string) {
-    if (confirm('Supprimer cette dépense ?')) {
+    const confirmed = await this.confirmService.confirm({
+      title: 'Supprimer la dépense',
+      message: 'Êtes-vous sûr de vouloir supprimer cette dépense ? Cette action est irréversible.',
+      confirmText: 'Supprimer',
+      type: 'danger'
+    });
+
+    if (confirmed) {
       await this.budgetService.deleteExpense(id);
     }
   }
 
   async applyFixedCharges() {
     const user = await this.user$.pipe(take(1)).toPromise();
-    if (user && confirm('Appliquer tous les frais fixes pour ce mois ? Cela supprimera les frais fixes déjà appliqués pour éviter les doublons.')) {
-      try {
-        const d = this.currentDateSubject.value;
-        await this.budgetService.applyFixedCharges(user.uid, d.getMonth(), d.getFullYear());
-        alert('Frais fixes appliqués avec succès !');
-      } catch (error) {
-        console.error(error);
-        alert('Une erreur est survenue lors de l\'application des frais fixes. Veuillez réessayer.');
+    if (user) {
+      const confirmed = await this.confirmService.confirm({
+        title: 'Appliquer les frais fixes',
+        message: 'Appliquer tous les frais fixes pour ce mois ? Cela supprimera les frais fixes déjà appliqués pour éviter les doublons.',
+        confirmText: 'Appliquer'
+      });
+
+      if (confirmed) {
+        try {
+          const d = this.currentDateSubject.value;
+          await this.budgetService.applyFixedCharges(user.uid, d.getMonth(), d.getFullYear());
+          // On pourrait aussi remplacer alert par un toast plus tard, mais restons sur confirm pour l'instant
+          alert('Frais fixes appliqués avec succès !');
+        } catch (error) {
+          console.error(error);
+          alert('Une erreur est survenue lors de l\'application des frais fixes. Veuillez réessayer.');
+        }
       }
     }
   }

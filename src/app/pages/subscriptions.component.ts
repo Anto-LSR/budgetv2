@@ -2,6 +2,7 @@ import { Component, inject, PLATFORM_ID } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { BudgetService } from '../services/budget.service';
 import { AuthService } from '../services/auth.service';
+import { ConfirmService } from '../services/confirm.service';
 import { FormsModule } from '@angular/forms';
 import { LucideAngularModule, ChevronLeft, Plus, Trash2, Save, Edit2, X, Pause, Play } from 'lucide-angular';
 import { Router, RouterModule } from '@angular/router';
@@ -218,6 +219,7 @@ import { Category, Subscription, UserProfile } from '../models/budget.models';
 export class SubscriptionsComponent {
   private budgetService = inject(BudgetService);
   private authService = inject(AuthService);
+  private confirmService = inject(ConfirmService);
   private router = inject(Router);
   private platformId = inject(PLATFORM_ID);
 
@@ -321,7 +323,14 @@ export class SubscriptionsComponent {
   }
 
   async deleteSubscription(id: string) {
-    if (confirm('Supprimer cet abonnement ?')) {
+    const confirmed = await this.confirmService.confirm({
+      title: 'Supprimer l\'abonnement',
+      message: 'Êtes-vous sûr de vouloir supprimer cet abonnement ?',
+      confirmText: 'Supprimer',
+      type: 'danger'
+    });
+
+    if (confirmed) {
       await this.budgetService.deleteSubscription(id);
     }
   }

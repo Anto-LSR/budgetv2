@@ -2,6 +2,7 @@ import { Component, inject, PLATFORM_ID } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { BudgetService } from '../services/budget.service';
 import { AuthService } from '../services/auth.service';
+import { ConfirmService } from '../services/confirm.service';
 import { FormsModule } from '@angular/forms';
 import { LucideAngularModule, ChevronLeft, Plus, Trash2, Save, Edit2, X } from 'lucide-angular';
 import { Router, RouterModule } from '@angular/router';
@@ -212,6 +213,7 @@ import { Category, FixedCharge, UserProfile } from '../models/budget.models';
 export class FixedChargesComponent {
   private budgetService = inject(BudgetService);
   private authService = inject(AuthService);
+  private confirmService = inject(ConfirmService);
   private router = inject(Router);
   private platformId = inject(PLATFORM_ID);
 
@@ -312,7 +314,14 @@ export class FixedChargesComponent {
   }
 
   async deleteCharge(id: string) {
-    if (confirm('Supprimer ce frais fixe ?')) {
+    const confirmed = await this.confirmService.confirm({
+      title: 'Supprimer le frais fixe',
+      message: 'Êtes-vous sûr de vouloir supprimer ce frais fixe ?',
+      confirmText: 'Supprimer',
+      type: 'danger'
+    });
+
+    if (confirmed) {
       await this.budgetService.deleteFixedCharge(id);
     }
   }

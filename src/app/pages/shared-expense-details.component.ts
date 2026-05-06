@@ -4,6 +4,7 @@ import { LucideAngularModule, ChevronLeft, UserPlus, Plus, Trash2, Copy, Check, 
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { SharedBudgetService } from '../services/shared-budget.service';
 import { AuthService } from '../services/auth.service';
+import { ConfirmService } from '../services/confirm.service';
 import { Observable, switchMap, of, combineLatest, map, take, tap } from 'rxjs';
 import { SharedGroup, SharedExpense, UserProfile, Settlement } from '../models/budget.models';
 import { FormsModule } from '@angular/forms';
@@ -164,6 +165,7 @@ export class SharedExpenseDetailsComponent {
   private route = inject(ActivatedRoute);
   private sharedService = inject(SharedBudgetService);
   private authService = inject(AuthService);
+  private confirmService = inject(ConfirmService);
   private router = inject(Router);
 
   data$: Observable<{
@@ -234,13 +236,26 @@ export class SharedExpenseDetailsComponent {
   }
 
   async deleteExpense(id: string) {
-    if (confirm('Supprimer cet élément ?')) {
+    const confirmed = await this.confirmService.confirm({
+      title: 'Supprimer l\'élément',
+      message: 'Êtes-vous sûr de vouloir supprimer cet élément ?',
+      confirmText: 'Supprimer',
+      type: 'danger'
+    });
+
+    if (confirmed) {
       await this.sharedService.deleteSharedExpense(id);
     }
   }
 
   async validateRepayment(groupId: string, settlement: Settlement) {
-    if (confirm(`Confirmer le remboursement de ${settlement.amount}€ de ${this.memberNamesFallback[settlement.from]} à ${this.memberNamesFallback[settlement.to]} ?`)) {
+    const confirmed = await this.confirmService.confirm({
+      title: 'Confirmer le remboursement',
+      message: `Confirmer le remboursement de ${settlement.amount.toFixed(2)}€ de ${this.memberNamesFallback[settlement.from]} à ${this.memberNamesFallback[settlement.to]} ?`,
+      confirmText: 'Confirmer'
+    });
+
+    if (confirmed) {
       await this.sharedService.addRepayment(groupId, settlement.from, settlement.to, settlement.amount);
     }
   }

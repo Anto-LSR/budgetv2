@@ -16,7 +16,7 @@ import { RouterModule } from '@angular/router';
         [class.text-slate-500]="activeMode !== 'budget'"
         class="flex-1 py-3 rounded-xl text-sm font-bold transition-all"
       >
-        Mode Budget
+        Budget
       </button>
       <button
         routerLink="/shared-expenses"
