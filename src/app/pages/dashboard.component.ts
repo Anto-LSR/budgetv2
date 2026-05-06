@@ -18,7 +18,7 @@ import { LoaderComponent } from '../components/loader.component';
   template: `
     <div class="min-h-screen bg-slate-50 pb-24" *ngIf="(user$ | async) as user; else fullPageLoader">
       <!-- Header -->
-      <header class="bg-white px-6 pt-12 pb-6 rounded-b-[40px] shadow-sm">
+      <header class="bg-white px-6 pt-12 pb-6 rounded-b-[40px] shadow-sm mb-6">
         <div class="flex justify-between items-center mb-6">
           <div>
             <p class="text-slate-500 text-sm">Bonjour,</p>
@@ -29,8 +29,11 @@ import { LoaderComponent } from '../components/loader.component';
           </button>
         </div>
 
+        <!-- Mode Switcher -->
+        <app-navigation activeMode="budget"></app-navigation>
+
         <!-- Month Selector -->
-        <div class="flex items-center justify-between mb-6 bg-slate-50 p-2 rounded-2xl relative">
+        <div class="flex items-center justify-between mt-6 bg-slate-50 p-2 rounded-2xl relative">
           <button (click)="previousMonth()" class="p-2 text-slate-600 hover:bg-white rounded-xl transition-colors">
             <lucide-icon [name]="ChevronLeftIcon" class="w-5 h-5"></lucide-icon>
           </button>
@@ -47,12 +50,10 @@ import { LoaderComponent } from '../components/loader.component';
             </button>
           </div>
         </div>
-
-        <!-- Mode Switcher -->
-        <app-navigation activeMode="budget"></app-navigation>
+      </header>
 
         <!-- Financial Summary Cards -->
-        <div class="grid grid-cols-2 gap-4 mb-6">
+        <div class="grid grid-cols-2 gap-4 mb-6 px-6">
           <!-- Total Incomes Card -->
           <div (click)="goToSalary()" class="bg-white rounded-[32px] p-6 border border-slate-100 shadow-sm cursor-pointer active:scale-95 transition-all group relative overflow-hidden">
             <div class="relative z-10">
@@ -93,29 +94,30 @@ import { LoaderComponent } from '../components/loader.component';
         </div>
 
         <!-- Total Expenses Card -->
-        <div class="bg-slate-900 rounded-[40px] p-8 text-white shadow-2xl shadow-slate-200 relative overflow-hidden">
-          <div class="relative z-10">
-            <div class="flex items-center gap-3 mb-4 opacity-80">
-              <div class="p-2 bg-white/20 rounded-xl">
-                <lucide-icon [name]="TrendingDownIcon" class="w-5 h-5"></lucide-icon>
+        <div class="px-6 mb-6">
+          <div class="bg-slate-900 rounded-[40px] p-8 text-white shadow-2xl shadow-slate-200 relative overflow-hidden">
+            <div class="relative z-10">
+              <div class="flex items-center gap-3 mb-4 opacity-80">
+                <div class="p-2 bg-white/20 rounded-xl">
+                  <lucide-icon [name]="TrendingDownIcon" class="w-5 h-5"></lucide-icon>
+                </div>
+                <span class="text-xs font-bold uppercase tracking-[0.2em]">Dépenses totales</span>
               </div>
-              <span class="text-xs font-bold uppercase tracking-[0.2em]">Dépenses totales</span>
+              <h2 class="text-5xl font-black mb-6 tracking-tight leading-none">{{ totalExpenses$ | async | number:'1.2-2' }} €</h2>
+              <div class="flex flex-wrap items-center gap-2.5">
+                <div class="flex items-center gap-2 text-slate-300 bg-white/10 w-fit px-3 py-1.5 rounded-xl text-[10px] font-bold backdrop-blur-md">
+                  <lucide-icon [name]="ZapIcon" class="w-3 h-3"></lucide-icon>
+                  <span class="capitalize">{{ currentMonthDate | date:'MMMM' }}</span>
+                </div>
+                <div *ngIf="(fixedExpensesTotal$ | async) as fixedTotal" class="flex items-center gap-2 text-indigo-200 bg-indigo-500/20 w-fit px-3 py-1.5 rounded-xl text-[10px] font-bold backdrop-blur-md border border-indigo-400/20">
+                  <span>dont {{ fixedTotal | number:'1.2-2' }} € en frais fixes & abos</span>
+                </div>
+              </div>
             </div>
-            <h2 class="text-5xl font-black mb-6 tracking-tight leading-none">{{ totalExpenses$ | async | number:'1.2-2' }} €</h2>
-            <div class="flex flex-wrap items-center gap-2.5">
-              <div class="flex items-center gap-2 text-slate-300 bg-white/10 w-fit px-3 py-1.5 rounded-xl text-[10px] font-bold backdrop-blur-md">
-                <lucide-icon [name]="ZapIcon" class="w-3 h-3"></lucide-icon>
-                <span class="capitalize">{{ currentMonthDate | date:'MMMM' }}</span>
-              </div>
-              <div *ngIf="(fixedExpensesTotal$ | async) as fixedTotal" class="flex items-center gap-2 text-indigo-200 bg-indigo-500/20 w-fit px-3 py-1.5 rounded-xl text-[10px] font-bold backdrop-blur-md border border-indigo-400/20">
-                <span>dont {{ fixedTotal | number:'1.2-2' }} € en frais fixes & abos</span>
-              </div>
-            </div>
+            <!-- Decorative element -->
+            <div class="absolute -right-10 -bottom-10 w-40 h-40 bg-indigo-500/20 rounded-full blur-3xl"></div>
           </div>
-          <!-- Decorative element -->
-          <div class="absolute -right-10 -bottom-10 w-40 h-40 bg-indigo-500/20 rounded-full blur-3xl"></div>
         </div>
-      </header>
 
       <main class="p-6">
         <!-- Quick Actions -->
@@ -204,7 +206,10 @@ import { LoaderComponent } from '../components/loader.component';
             <app-loader message="Chargement des dépenses..."></app-loader>
           </div>
 
-          <div *ngFor="let expense of filteredExpenses$ | async" class="bg-white p-4 rounded-2xl flex items-center gap-4 shadow-sm border border-slate-50 group">
+          <div *ngFor="let expense of filteredExpenses$ | async; let odd = odd"
+               [class.bg-white]="!odd"
+               [class.bg-striped]="odd"
+               class="p-4 rounded-2xl flex items-center gap-4 shadow-sm border border-slate-50 group">
             <div
               class="w-12 h-12 rounded-xl flex items-center justify-center text-white shrink-0"
               [style.backgroundColor]="getCategoryColor(expense.categoryId) || '#94a3b8'"

@@ -7,14 +7,14 @@ import { RouterModule } from '@angular/router';
   standalone: true,
   imports: [CommonModule, RouterModule],
   template: `
-    <div class="flex bg-slate-100 p-1.5 rounded-2xl mb-6 shadow-sm border border-slate-200/50">
+    <div class="flex bg-slate-100 p-2 rounded-2xl mb-6 shadow-sm border border-slate-200/50">
       <button
         routerLink="/dashboard"
         [class.bg-white]="activeMode === 'budget'"
         [class.text-indigo-600]="activeMode === 'budget'"
         [class.shadow-sm]="activeMode === 'budget'"
         [class.text-slate-500]="activeMode !== 'budget'"
-        class="flex-1 py-3 rounded-xl text-sm font-bold transition-all"
+        class="flex-1 py-4 rounded-xl text-sm font-bold transition-all"
       >
         Budget
       </button>
@@ -24,7 +24,7 @@ import { RouterModule } from '@angular/router';
         [class.text-indigo-600]="activeMode === 'shared'"
         [class.shadow-sm]="activeMode === 'shared'"
         [class.text-slate-500]="activeMode !== 'shared'"
-        class="flex-1 py-3 rounded-xl text-sm font-bold transition-all"
+        class="flex-1 py-4 rounded-xl text-sm font-bold transition-all"
       >
         Dépenses partagées
       </button>

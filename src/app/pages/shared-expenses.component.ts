@@ -1,6 +1,6 @@
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { LucideAngularModule, Users, Plus, ArrowRight, Wallet, Archive, ArchiveRestore } from 'lucide-angular';
+import { LucideAngularModule, Users, Plus, ArrowRight, Wallet, Archive, ArchiveRestore, LogOut } from 'lucide-angular';
 import { Router, RouterModule } from '@angular/router';
 import { SharedBudgetService } from '../services/shared-budget.service';
 import { AuthService } from '../services/auth.service';
@@ -24,7 +24,7 @@ import { LoaderComponent } from '../components/loader.component';
             <h1 class="text-2xl font-bold text-slate-900">Dépenses partagées</h1>
             <p class="text-slate-500 text-sm">Gérez vos comptes à plusieurs</p>
           </div>
-          <div class="p-3 bg-indigo-100 text-indigo-600 rounded-2xl">
+          <div class="p-3 bg-indigo-100 text-indigo-600 rounded-2xl flex-none">
             <lucide-icon [name]="UsersIcon" class="w-6 h-6"></lucide-icon>
           </div>
         </div>
@@ -72,19 +72,19 @@ import { LoaderComponent } from '../components/loader.component';
           <div class="grid gap-4">
             <div
               *ngFor="let group of groups"
-              class="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm flex items-center justify-between cursor-pointer active:scale-[0.98] transition-all group relative"
+              class="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm flex items-center justify-between cursor-pointer active:scale-[0.98] transition-all group relative overflow-hidden"
             >
-              <div class="flex items-center gap-4 flex-1" (click)="goToGroup(group.id!)">
-                <div class="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center">
+              <div class="flex items-center gap-4 min-w-0 flex-1 mr-3" (click)="goToGroup(group.id!)">
+                <div class="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center flex-none">
                   <lucide-icon [name]="UsersIcon" class="w-6 h-6"></lucide-icon>
                 </div>
-                <div>
-                  <h3 class="font-bold text-slate-900">{{ group.name }}</h3>
+                <div class="min-w-0">
+                  <h3 class="font-bold text-slate-900 truncate">{{ group.name }}</h3>
                   <p class="text-xs text-slate-500">{{ group.members.length }} membre(s)</p>
                 </div>
               </div>
 
-              <div class="flex items-center gap-2">
+              <div class="flex items-center gap-2 flex-none">
                 <button
                   *ngIf="showArchived"
                   (click)="$event.stopPropagation(); unarchiveGroup(group.id!)"
@@ -178,6 +178,12 @@ export class SharedExpensesComponent {
   readonly ArrowRightIcon = ArrowRight;
   readonly ArchiveIcon = Archive;
   readonly ArchiveRestoreIcon = ArchiveRestore;
+  readonly LogOutIcon = LogOut;
+
+  async logout() {
+    await this.authService.logout();
+    this.router.navigate(['/login']);
+  }
 
   constructor() {
     this.groups$ = combineLatest([

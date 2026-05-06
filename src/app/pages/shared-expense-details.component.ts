@@ -121,20 +121,25 @@ import { LoaderComponent } from '../components/loader.component';
           </div>
 
           <div class="space-y-3">
-            <div *ngFor="let expense of data.expenses"
+            <div *ngFor="let expense of data.expenses; let odd = odd"
                  [routerLink]="expense.type === 'repayment' ? null : ['/shared-expenses', data.group.id, 'edit', expense.id]"
                  [class.cursor-default]="expense.type === 'repayment'"
-                 class="bg-white p-5 rounded-[28px] border border-slate-100 shadow-sm flex items-center justify-between group active:scale-[0.98] transition-all cursor-pointer">
-              <div class="flex items-center gap-4">
-                <div [class]="expense.type === 'repayment' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-400'" class="w-12 h-12 rounded-2xl flex items-center justify-center">
+                 [class.bg-white]="!odd"
+                 [class.bg-striped]="odd"
+                 class="p-6 rounded-[32px] border border-slate-100 shadow-sm flex items-center justify-between group active:scale-[0.98] transition-all cursor-pointer">
+              <div class="flex-1 min-w-0 flex items-center gap-4">
+                <div [class]="expense.type === 'repayment' ? 'bg-emerald-50 text-emerald-600' : ''"
+                     [style.backgroundColor]="expense.type !== 'repayment' ? userColors[expense.paidBy] : null"
+                     [style.color]="expense.type !== 'repayment' ? 'white' : null"
+                     class="w-12 h-12 rounded-2xl flex items-center justify-center flex-none">
                   <lucide-icon *ngIf="expense.type === 'repayment'" [name]="HandCoinsIcon" class="w-6 h-6"></lucide-icon>
                   <span *ngIf="expense.type !== 'repayment'" class="font-bold text-sm">{{ (data.memberNames[expense.paidBy] || '?')[0].toUpperCase() }}</span>
                 </div>
-                <div>
-                  <h3 class="font-bold text-slate-900 leading-tight">
+                <div class="min-w-0">
+                  <h3 class="font-bold text-slate-900 leading-tight truncate">
                     {{ expense.type === 'repayment' ? 'Remboursement' : expense.title }}
                   </h3>
-                  <p class="text-[10px] text-slate-500 mt-0.5">
+                  <p class="text-[10px] text-slate-500 mt-0.5 truncate">
                     <ng-container *ngIf="expense.type === 'repayment'">
                       De <span class="font-bold">{{ data.memberNames[expense.paidBy] || '?' }}</span>
                       à <span class="font-bold">{{ data.memberNames[expense.splitBetween[0]] || '?' }}</span>
@@ -146,13 +151,15 @@ import { LoaderComponent } from '../components/loader.component';
                   </p>
                 </div>
               </div>
-              <div class="flex flex-col items-end">
-                <span class="font-black text-slate-900">{{ expense.amount | number:'1.2-2' }} €</span>
-                <div class="flex items-center gap-1 mt-1">
-                  <button (click)="$event.stopPropagation(); deleteExpense(expense.id!)" class="opacity-0 group-hover:opacity-100 p-1 text-red-400 hover:text-red-600 transition-opacity">
-                    <lucide-icon [name]="TrashIcon" class="w-3.5 h-3.5"></lucide-icon>
-                  </button>
-                </div>
+              <div class="flex items-center gap-3 flex-none ml-2">
+                <span class="font-black text-slate-900 whitespace-nowrap">{{ expense.amount | number:'1.2-2' }} €</span>
+                <button
+                  (click)="$event.stopPropagation(); deleteExpense(expense.id!)"
+                  class="w-8 h-8 rounded-lg flex items-center justify-center text-red-500 bg-red-50 active:scale-90 transition-all border border-red-100/50"
+                  title="Supprimer"
+                >
+                  <lucide-icon [name]="TrashIcon" class="w-4 h-4"></lucide-icon>
+                </button>
               </div>
             </div>
 
@@ -206,6 +213,19 @@ export class SharedExpenseDetailsComponent {
 
   userId: string = '';
 
+  userColors: { [key: string]: string } = {};
+  private availableColors = [
+    '#4f46e5', // indigo-600
+    '#059669', // emerald-600
+    '#dc2626', // red-600
+    '#ea580c', // orange-600
+    '#d97706', // amber-600
+    '#7c3aed', // violet-600
+    '#2563eb', // blue-600
+    '#db2777', // pink-600
+    '#0891b2'  // cyan-600
+  ];
+
   constructor() {
     this.authService.user$.subscribe(user => {
       if (user) this.userId = user.uid;
@@ -243,6 +263,20 @@ export class SharedExpenseDetailsComponent {
             });
 
             const balances = this.sharedService.calculateBalance(group.members, expenses);
+
+            // Assigner des couleurs aux membres
+            const userColors: { [key: string]: string } = {};
+            group.members.forEach((m, i) => {
+              if (m === this.userId) {
+                userColors[m] = '#4f46e5'; // Toujours indigo pour l'utilisateur actuel
+              } else {
+                // Éviter d'utiliser la couleur de l'utilisateur actuel pour les autres si possible
+                const colorIndex = (i + 1) % this.availableColors.length;
+                userColors[m] = this.availableColors[colorIndex === 0 ? 1 : colorIndex];
+              }
+            });
+            this.userColors = userColors;
+
             this.memberNamesFallback = memberNames;
             return {
               group,
